@@ -108,33 +108,33 @@ class WeatherDataParser:
 
 
 class WeatherResultsCalculator:
+    def __init__(self):
+        pass
+
     @staticmethod
     def calculate_yearly_extremes(readings, year):
-        highest_temp = None
+        highest_temp = float("-inf")
         highest_temp_day = None
-        lowest_temp = None
+        lowest_temp = float("inf")
         lowest_temp_day = None
-        highest_humidity = None
+        highest_humidity = float("-inf")
         highest_humidity_day = None
 
         for reading in readings:
             # Get year from the reading date (date format: YYYY-MM-DD)
             reading_year = reading.date.split('-')[0]
             if reading_year == year:
-                if reading.max_temp is not None and (highest_temp is None or
-                                                     reading.max_temp >
-                                                     highest_temp):
+                if reading.max_temp and (highest_temp is None or
+                                         reading.max_temp > highest_temp):
                     highest_temp = reading.max_temp
                     highest_temp_day = reading.date
-                if reading.min_temp is not None and (lowest_temp is None or
-                                                     reading.min_temp <
-                                                     lowest_temp):
+                if reading.min_temp and (lowest_temp is None or
+                                         reading.min_temp < lowest_temp):
                     lowest_temp = reading.min_temp
                     lowest_temp_day = reading.date
-                if reading.max_humidity is not None and (highest_humidity is
-                                                         None or
-                                                         reading.max_humidity >
-                                                         highest_humidity):
+                if reading.max_humidity and (highest_humidity is None or
+                                             reading.max_humidity >
+                                             highest_humidity):
                     highest_humidity = reading.max_humidity
                     highest_humidity_day = reading.date
 
@@ -152,35 +152,33 @@ class WeatherResultsCalculator:
         total_max_temp = 0
         total_min_temp = 0
         total_mean_humidity = 0
-        count_max_temp = 0
-        count_min_temp = 0
-        count_mean_humidity = 0
+        no_of_entries = 0
 
         for reading in readings:
             reading_year, reading_month = reading.date.split('-')[:2]
             if reading_year == year and reading_month == month:
-                if reading.max_temp is not None:
+                if reading.max_temp:
                     total_max_temp += reading.max_temp
-                    count_max_temp += 1
-                if reading.min_temp is not None:
+                if reading.min_temp:
                     total_min_temp += reading.min_temp
-                    count_min_temp += 1
-                if reading.mean_humidity is not None:
+                if reading.mean_humidity:
                     total_mean_humidity += reading.mean_humidity
-                    count_mean_humidity += 1
-
-        avg_max_temp = total_max_temp / count_max_temp if count_max_temp \
-            else None
-        avg_min_temp = total_min_temp / count_min_temp if count_min_temp \
-            else None
-        avg_mean_humidity = total_mean_humidity / count_mean_humidity if (
-            count_mean_humidity) else None
+                no_of_entries += 1
 
         return {
-            "avg_max_temp": avg_max_temp,
-            "avg_min_temp": avg_min_temp,
-            "avg_mean_humidity": avg_mean_humidity
+            "avg_max_temp": WeatherResultsCalculator.calculate_average(
+                total_max_temp, no_of_entries),
+            "avg_min_temp": WeatherResultsCalculator.calculate_average(
+                total_min_temp, no_of_entries),
+            "avg_mean_humidity": WeatherResultsCalculator.calculate_average(
+                total_mean_humidity, no_of_entries)
         }
+
+    @staticmethod
+    def calculate_average(total_value, no_of_entries):
+        if no_of_entries <= 0:
+            return None
+        return total_value / no_of_entries
 
 
 class WeatherReportsGenerator:
@@ -191,15 +189,26 @@ class WeatherReportsGenerator:
         extremes = WeatherResultsCalculator.calculate_yearly_extremes(
             self.readings, year)
 
-        print(
-            f"Highest: {extremes['highest_temp']}C on "
-            f"{self.format_date(extremes['highest_temp_day'])}")
-        print(
-            f"Lowest: {extremes['lowest_temp']}C on "
-            f"{self.format_date(extremes['lowest_temp_day'])}")
-        print(
-            f"Humidity: {extremes['highest_humidity']}% on "
-            f"{self.format_date(extremes['highest_humidity_day'])}")
+        if extremes['highest_temp'] and extremes['highest_temp_day']:
+            print(
+                f"Highest: {extremes['highest_temp']}°C on "
+                f"{self.format_date(extremes['highest_temp_day'])}")
+        else:
+            print("Highest temperature data not available.")
+
+        if extremes['lowest_temp'] and extremes['lowest_temp_day']:
+            print(
+                f"Lowest: {extremes['lowest_temp']}°C on "
+                f"{self.format_date(extremes['lowest_temp_day'])}")
+        else:
+            print("Lowest temperature data not available.")
+
+        if extremes['highest_humidity'] and extremes['highest_humidity_day']:
+            print(
+                f"Humidity: {extremes['highest_humidity']}% on "
+                f"{self.format_date(extremes['highest_humidity_day'])}")
+        else:
+            print("Highest humidity data not available.")
 
     @staticmethod
     def format_date(date_str):
@@ -220,11 +229,33 @@ class WeatherReportsGenerator:
     def display_monthly_averages(self, year, month):
         averages = WeatherResultsCalculator.calculate_monthly_averages(
             self.readings, year, month)
-        print(f"Highest Average: {averages['avg_max_temp']:.2f}C")
-        print(f"Lowest Average: {averages['avg_min_temp']:.2f}C")
-        print(f"Average Mean Humidity: {averages['avg_mean_humidity']:.2f}%")
 
-    def draw_monthly_temperature_charts(self, year, month):
+        if averages['avg_max_temp']:
+            print(f"Highest Average: {averages['avg_max_temp']:.2f}°C")
+        else:
+            print("Highest average temperature data not available.")
+
+        if averages['avg_min_temp']:
+            print(f"Lowest Average: {averages['avg_min_temp']:.2f}°C")
+        else:
+            print("Lowest average temperature data not available.")
+
+        if averages['avg_mean_humidity']:
+            print(
+                f"Average Mean Humidity: {averages['avg_mean_humidity']:.2f}%")
+        else:
+            print("Average mean humidity data not available.")
+
+    def display_monthly_temperature_charts(self, year, month):
+        daily_temperature_readings = self._get_daily_temperature_readings(
+            year, month)
+
+        month_name = WeatherReportsGenerator.get_month_name(int(month))
+        print(f"{month_name} {year}")
+
+        self._draw_temperature_charts(daily_temperature_readings)
+
+    def _get_daily_temperature_readings(self, year, month):
         daily_temperature_readings = {}
 
         for reading in self.readings:
@@ -234,17 +265,17 @@ class WeatherReportsGenerator:
                 if day not in daily_temperature_readings:
                     daily_temperature_readings[day] = {'max_temp': None,
                                                        'min_temp': None}
-                if reading.max_temp is not None:
-                    daily_temperature_readings[day]['max_temp'] = (
-                        reading.max_temp)
-                if reading.min_temp is not None:
-                    daily_temperature_readings[day]['min_temp'] = (
-                        reading.min_temp)
+                if reading.max_temp:
+                    daily_temperature_readings[day][
+                        'max_temp'] = reading.max_temp
+                if reading.min_temp:
+                    daily_temperature_readings[day][
+                        'min_temp'] = reading.min_temp
 
-        month_name = WeatherReportsGenerator.get_month_name(int(month))
-        print(f"{month_name} {year}")
+        return daily_temperature_readings
 
-        # ANSI escape codes for color formatting
+    @staticmethod
+    def _draw_temperature_charts(daily_temperature_readings):
         _RED = '\033[91m'  # Red
         _BLUE = '\033[94m'  # Blue
         _END_COLOR = '\033[0m'  # Reset color
@@ -253,7 +284,6 @@ class WeatherReportsGenerator:
             max_temp = daily_temperature_readings[day]['max_temp']
             min_temp = daily_temperature_readings[day]['min_temp']
 
-            # To calculate colored bars for maximum and minimum temperatures
             max_bar = f"{_RED}{'+' * int(max_temp)}{_END_COLOR}" if (
                 max_temp) else ''
             min_bar = f"{_BLUE}{'+' * int(min_temp)}{_END_COLOR}" if (
@@ -264,55 +294,82 @@ class WeatherReportsGenerator:
 
 
 def main():
-    if len(sys.argv) < 4 or len(sys.argv) % 2 != 0:
-        print("Enter: python main.py <file_path> -e <year> -a "
-              "<year>/<month> -c <year><month>")
-        sys.exit(1)
+    if not validate_arguments(sys.argv):
+        print_usage_and_exit()
 
     files_path = sys.argv[1]
-
-    # Initialize a WeatherDataParser to read weather data from files
     weather_data_reader = WeatherDataParser(files_path)
-    # Read data from files
     weather_data_reader.read_files()
-    # Pass the readings made to generate reports
     reports_generator = WeatherReportsGenerator(weather_data_reader.readings)
 
-    # Looping through the arguments to perform desired actions
-    for argument in range(2, len(sys.argv), 2):
-        option = sys.argv[argument]
-        date_string = sys.argv[argument + 1]
+    process_arguments(sys.argv[2:], reports_generator)
+
+
+def validate_arguments(args):
+    # Check if the arguments provided are valid.
+    return len(args) >= 4 and len(args) % 2 == 0
+
+
+def print_usage_and_exit():
+    print("Usage: python main.py <file_path> -e <year> -a <year>/<month> -c "
+          "<year>/<month>")
+    sys.exit(1)
+
+
+def process_arguments(arguments, reports_generator):
+    for index in range(0, len(arguments), 2):
+        option = arguments[index]
+        date_string = arguments[index + 1]
 
         if option == "-e":
-            if not date_string.isdigit() or len(date_string) != 4:
-                print("Invalid year format. Usage: -e <year>")
-                sys.exit(1)
-            reports_generator.display_yearly_extremes(date_string)
-
+            process_yearly_extremes(date_string, reports_generator)
         elif option == "-a" or option == "-c":
-            date_parts = date_string.split("/")
-            if len(date_parts) != 2:
-                print("Invalid date format. Usage: -a/-c <year/month>")
-                sys.exit(1)
-
-            year, month = date_parts
-            # if the year or month contains any non-digit character
-            if not year.isdigit() or not month.isdigit():
-                print("Year and month should be integers.")
-                sys.exit(1)
-
-            if len(year) != 4 or not (1 <= int(month) <= 12):
-                print("Invalid year/month format.")
-                sys.exit(1)
-
-            if option == "-a":
-                reports_generator.display_monthly_averages(year, month)
-            else:
-                reports_generator.draw_monthly_temperature_charts(year, month)
-
+            process_monthly_data(option, date_string, reports_generator)
         else:
             print("Invalid option. Options should be -e, -a, or -c.")
             sys.exit(1)
+
+
+def process_yearly_extremes(date_string, reports_generator):
+    if not is_valid_year(date_string):
+        print("Invalid year format. Usage: -e <year>")
+        sys.exit(1)
+    reports_generator.display_yearly_extremes(date_string)
+
+
+def is_valid_year(year):
+    return year.isdigit() and len(year) == 4
+
+
+def process_monthly_data(option, date_string, reports_generator):
+    year, month = parse_year_month(date_string)
+    if year is None or month is None:
+        print("Invalid date format. Usage: -a/-c <year/month>")
+        sys.exit(1)
+
+    if option == "-a":
+        reports_generator.display_monthly_averages(year, month)
+    else:
+        reports_generator.display_monthly_temperature_charts(year, month)
+
+
+def parse_year_month(date_string):
+    date_parts = date_string.split("/")
+    if len(date_parts) != 2:
+        return None, None
+
+    year, month = date_parts
+    if not (is_valid_year(year) and is_valid_month(month)):
+        return None, None
+
+    return year, month
+
+
+def is_valid_month(month):
+    if not month.isdigit():
+        return False
+    month_int = int(month)
+    return 1 <= month_int <= 12
 
 
 if __name__ == "__main__":
